@@ -45,7 +45,7 @@ const ChatLayout = () => {
     updatePayload(userMsgForLLM);
 
     try {
-      const response = await fetch("http://localhost:8005/rag/stream", {
+      const response = await fetch("/rag/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +105,7 @@ const ChatLayout = () => {
                 typeof data === "number" ||
                 typeof data === "boolean"
               ) {
-                accumulatedText += String(data);
+                accumulatedText += ` ${String(data)}`;
               } else {
                 // It's an object, try to extract the content
                 const textToAdd = data.token ?? data.content ?? data.text ?? "";
