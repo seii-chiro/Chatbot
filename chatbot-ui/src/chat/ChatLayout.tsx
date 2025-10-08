@@ -45,7 +45,7 @@ const ChatLayout = () => {
     updatePayload(userMsgForLLM);
 
     try {
-      const response = await fetch("/rag/stream", {
+      const response = await fetch("http://localhost:8005/rag/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -72,12 +72,15 @@ const ChatLayout = () => {
 
         // Decode the chunk
         const chunk = decoder.decode(value, { stream: true });
+        console.log("RAW CHUNK:", chunk);
+
         // Parse SSE format if your endpoint uses it
         // Adjust this parsing based on your endpoint's format
         const lines = chunk.split(/\r?\n/);
         for (const raw of lines) {
-          const line = raw.trimEnd();
-          if (!line) continue;
+          const line = raw.trim();
+          if (line.length === 0) continue;
+          console.log("PROCESSING LINE:", line);
 
           if (
             line.startsWith("event:") ||
@@ -88,16 +91,34 @@ const ChatLayout = () => {
           }
 
           if (line.startsWith("data: ")) {
+            const dataContent = line.slice(6);
+
+            if (dataContent.trim().length === 0) {
+              continue;
+            }
+
             try {
-              const data = JSON.parse(line.slice(6));
-              // Adjust based on your response format
-              accumulatedText += data.token || data.content || data.text || "";
+              const data = JSON.parse(dataContent);
+
+              if (
+                typeof data === "string" ||
+                typeof data === "number" ||
+                typeof data === "boolean"
+              ) {
+                accumulatedText += String(data);
+              } else {
+                // It's an object, try to extract the content
+                const textToAdd = data.token ?? data.content ?? data.text ?? "";
+                accumulatedText += textToAdd;
+              }
             } catch {
-              // If not JSON, treat as plain text
-              accumulatedText += line.slice(6);
+              // Not JSON, add as plain text
+              accumulatedText += dataContent;
             }
           }
         }
+
+        console.log("ACCUMULATED SO FAR:", accumulatedText);
 
         // Update the message with accumulated text
         setMessages((prev) =>
