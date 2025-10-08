@@ -37,8 +37,6 @@ The system consists of:
 - 🛠️ **Easy local deployment** via Node scripts  
 - 🧱 **Extendable architecture** for future data sources or models  
 
----
 
-## 📁 Project Structure
 
 
