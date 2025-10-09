@@ -40,7 +40,7 @@ app.post("/rag/stream", async (req, res) => {
   }
 
   res.writeHead(200, {
-    "Content-Type": "text/event-stream",
+    "Content-Type": "application/json",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
   });
@@ -54,23 +54,30 @@ app.post("/rag/stream", async (req, res) => {
     });
 
     for await (const part of answerStream) {
-      res.write(`data: ${part.message?.content ?? ""}\n\n`);
+      const chunk = {
+        type: "content",
+        content: part.message?.content ?? "",
+      };
+      res.write(JSON.stringify(chunk) + "\n");
     }
 
     // Only send sources if we actually used them
     if (sources.length) {
-      res.write(`event: sources\n`);
-      res.write(`data: ${JSON.stringify(sources)}\n\n`);
+      const sourcesChunk = {
+        type: "sources",
+        sources: sources,
+      };
+      res.write(JSON.stringify(sourcesChunk) + "\n");
     }
 
+    res.write(JSON.stringify({ type: "done" }) + "\n");
     res.end();
   } catch (err: any) {
-    res.write(`event: error\n`);
-    res.write(
-      `data: ${JSON.stringify({
-        message: err?.message || "Unknown error",
-      })}\n\n`
-    );
+    const errorChunk = {
+      type: "error",
+      message: err?.message || "Unknown error",
+    };
+    res.write(JSON.stringify(errorChunk) + "\n");
     res.end();
   }
 });
