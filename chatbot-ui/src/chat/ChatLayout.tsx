@@ -9,6 +9,7 @@ const ChatLayout = () => {
   const [messages, setMessages] = useState<Messages[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const { payload, updatePayload } = usePayloadBuilder();
+  const [sources, setSources] = useState("");
 
   const handleStreamingResponse = async (userMessage: string) => {
     // Add user message
@@ -41,11 +42,11 @@ const ChatLayout = () => {
       messages: [...payload.messages, userMsgForLLM],
     };
 
-    // 2️⃣ Update state (async, safe)
+    // Update state
     updatePayload(userMsgForLLM);
 
     try {
-      const response = await fetch("/rag/stream", {
+      const response = await fetch("http://localhost:8005/rag/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,68 +65,68 @@ const ChatLayout = () => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedText = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) break;
 
-        // Decode the chunk
-        const chunk = decoder.decode(value, { stream: true });
-        console.log("RAW CHUNK:", chunk);
+        // Decode the chunk and add to buffer
+        buffer += decoder.decode(value, { stream: true });
 
-        // Parse SSE format if your endpoint uses it
-        // Adjust this parsing based on your endpoint's format
-        const lines = chunk.split(/\r?\n/);
-        for (const raw of lines) {
-          const line = raw.trim();
-          if (line.length === 0) continue;
-          console.log("PROCESSING LINE:", line);
+        // Split by newlines (NDJSON format)
+        const lines = buffer.split("\n");
 
-          if (
-            line.startsWith("event:") ||
-            line.startsWith("id:") ||
-            line.startsWith("retry:")
-          ) {
-            continue;
-          }
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || "";
 
-          if (line.startsWith("data: ")) {
-            const dataContent = line.slice(6);
+        // Process each complete line
+        for (const line of lines) {
+          if (!line.trim()) continue;
 
-            if (dataContent.trim().length === 0) {
-              continue;
+          try {
+            const chunk = JSON.parse(line);
+            console.log("PARSED CHUNK:", chunk);
+
+            switch (chunk.type) {
+              case "content":
+                // Accumulate content chunks
+                accumulatedText += chunk.content;
+
+                // Update the message with accumulated text
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === botMsgId
+                      ? { ...msg, text: accumulatedText }
+                      : msg
+                  )
+                );
+                break;
+
+              case "sources":
+                // Handle sources
+                console.log("SOURCES:", chunk.sources);
+                setSources(JSON.stringify(chunk.sources, null, 2));
+                break;
+
+              case "error":
+                // Handle error
+                console.error("Stream error:", chunk.message);
+                throw new Error(chunk.message);
+
+              case "done":
+                // Stream complete
+                console.log("Stream complete");
+                break;
+
+              default:
+                console.warn("Unknown chunk type:", chunk.type);
             }
-
-            try {
-              const data = JSON.parse(dataContent);
-
-              if (
-                typeof data === "string" ||
-                typeof data === "number" ||
-                typeof data === "boolean"
-              ) {
-                accumulatedText += ` ${String(data)}`;
-              } else {
-                // It's an object, try to extract the content
-                const textToAdd = data.token ?? data.content ?? data.text ?? "";
-                accumulatedText += textToAdd;
-              }
-            } catch {
-              // Not JSON, add as plain text
-              accumulatedText += dataContent;
-            }
+          } catch (parseError) {
+            console.error("Failed to parse JSON line:", line, parseError);
           }
         }
-
-        console.log("ACCUMULATED SO FAR:", accumulatedText);
-
-        // Update the message with accumulated text
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === botMsgId ? { ...msg, text: accumulatedText } : msg
-          )
-        );
       }
 
       // Mark streaming as complete
@@ -160,7 +161,7 @@ const ChatLayout = () => {
   return (
     <ChatBody>
       <div className="flex-grow h-full flex flex-col">
-        <ChatMessageArea messages={messages} />
+        <ChatMessageArea messages={messages} sources={sources} />
         <ChatInput
           onSendMessage={handleStreamingResponse}
           disabled={isStreaming}
