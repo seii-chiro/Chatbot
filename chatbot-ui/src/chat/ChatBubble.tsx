@@ -4,7 +4,23 @@ type Props = {
   isStreaming: boolean;
 };
 
+const thinkingPhrases = [
+  "Processing...",
+  "Working on it...",
+  "Just a moment...",
+  "One sec...",
+  "Getting things ready...",
+  "Hold tight...",
+  "Analyzing your question...",
+  "Cooking up a reply...",
+  "Hmm... interesting...",
+  "Let me think...",
+];
+
 const ChatBubble = ({ message, isUser, isStreaming }: Props) => {
+  const loadingMessage =
+    thinkingPhrases[Math.floor(Math.random() * thinkingPhrases.length)];
+
   return (
     <div
       className={`w-full flex ${isUser ? "justify-end" : "justify-start"} mb-3`}
@@ -15,9 +31,8 @@ const ChatBubble = ({ message, isUser, isStreaming }: Props) => {
         }`}
       >
         <p className="text-sm whitespace-pre-wrap">{message}</p>
-        {isStreaming && (
-          <span className="inline-block w-2 h-4 bg-gray-600 animate-pulse ml-1">
-          </span>
+        {isStreaming && !message.trim() && (
+          <span className="w-1 h-4 animate-pulse ml-1 opacity-70">{loadingMessage}</span>
         )}
       </div>
     </div>

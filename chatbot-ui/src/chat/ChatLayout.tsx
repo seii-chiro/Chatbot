@@ -4,6 +4,7 @@ import ChatInput from "./ChatInput";
 import ChatMessageArea from "./ChatMessageArea";
 import type { Messages, MessagesHistory } from "@/lib/definitions";
 import usePayloadBuilder from "@/hooks/usePayloadBuilder";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 
 const ChatLayout = () => {
   const [messages, setMessages] = useState<Messages[]>([]);
@@ -46,7 +47,7 @@ const ChatLayout = () => {
     updatePayload(userMsgForLLM);
 
     try {
-      const response = await fetch("http://localhost:8005/rag/stream", {
+      const response = await fetch("/rag/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -161,11 +162,17 @@ const ChatLayout = () => {
   return (
     <ChatBody>
       <div className="flex-grow h-full flex flex-col">
-        <ChatMessageArea messages={messages} sources={sources} />
-        <ChatInput
-          onSendMessage={handleStreamingResponse}
-          disabled={isStreaming}
-        />
+        <header className="w-full bg-sidebar-ring flex justify-between items-center p-2">
+          <h1 className="font-bold">Laggy McPromptface</h1>
+          <ModeToggle />
+        </header>
+        <main className="w-full h-full px-2 pb-3 gap-2 flex flex-col overflow-hidden">
+          <ChatMessageArea messages={messages} sources={sources} />
+          <ChatInput
+            onSendMessage={handleStreamingResponse}
+            disabled={isStreaming}
+          />
+        </main>
       </div>
     </ChatBody>
   );
