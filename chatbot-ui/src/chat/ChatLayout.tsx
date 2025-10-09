@@ -163,7 +163,7 @@ const ChatLayout = () => {
     <ChatBody>
       <div className="flex-grow h-full flex flex-col">
         <header className="w-full bg-sidebar-ring flex justify-between items-center p-2">
-          <h1 className="font-bold">Laggy McPromptface</h1>
+          <h1 className="font-bold">Laggy Chatbot</h1>
           <ModeToggle />
         </header>
         <main className="w-full h-full px-2 pb-3 gap-2 flex flex-col overflow-hidden">
